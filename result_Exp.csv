@@ -1,0 +1,5 @@
+﻿Experimento;Característica;n;X;X¹;p-value X;Y;Y¹;p-value Y
+Experimento1;Aleatório;414;136.5354;135.961;0.7682;24.00867;22.8911;0.4916
+Experimento2;Ciência da computação;54;128.7014;135.961;0.2098;56.71738;22.8911;0.000695
+Experimento3;X>mu;414;169.7468;135.961;< 2.2e-16;26.1363;22.8911;0.05906
+Experimento4;X>mu & Y >mu;134;175.6839;135.961;< 2.2e-16;59.8974;22.8911;< 2.2e-16

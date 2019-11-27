@@ -1,0 +1,938 @@
+---
+title: "Análise estatística multivariada da relação entre Equipes multi/Inter disciplinares & Produção de aplicativos"
+author: "Métricas e modelo: Vivian Alves (tese UFSC), apoio Viviane Schneider. Análise estatística e Código fonte: Viviane Schneider"
+date: "inicio em 10/09/2019. última atualização em: Versão 26. Data:29-10-2019."
+output: 
+  html_document: 
+    highlight: zenburn
+    keep_md: yes
+    number_sections: yes
+    theme: cerulean
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+
+```
+
+# Contexto do Estudo
+
+A análise estatística multivariada é parte da estatística e da análise de dados que estuda, analisa, representa, e interpreta os dados resultantes da observação de mais de uma variável de uma amostra de indivíduos. A informação resultante da análise estatística multivariada possui caráter multidimensional (CUANDRAS, 2019).
+Assim, neste estudo buscamos investigar por meio da análise estatística multivariada a relação de equipes com perfil multi/inter disciplinar (programas de pós-graduação no Brasil) e sua produção de aplicativos.  
+
+**Objetivo do estudo:** O objetivo do estudo é verificar se existe uma relação positiva entre perfil multi e interdisciplinar de equipes (programas de pós-gradução brasileiros) e a produção de aplicativos de software dessas equipes.
+
+**Hipótese conceitual:** Equipes com perfil multi/inter disciplinar produzem mais aplicativos de software.
+
+**Pergunta de pesquisa:** Qual a relação entre perfis multi e interdisciplinares de programas de pós-graduação e produção de aplicativos?
+
+**Recorte de análise:** Todos os programas de pós-graduação do Brasil, que produziram ao menos 1 aplicativo entre os anos 2013 até 2016.
+
+# Método e materiais
+
+**ETAPA 1 - PREPARAÇÃO DO ESTUDO**
+
+1. Fundamentação teórica para estabelecimento da métrica independente (X) e da métrica dependente (Y).
+
+2. Identificação de dados, universo e amostras experimentais.
+
+3. Coleta, limpeza, identificação de variáveis para compor as métricas.
+
+**ETAPA 2 - CALCULO E ANÁLISE DE CORRELAÇÃO DOS DADOS**
+
+4. Tabulação e cálculo das métricas.
+
+5. Aplicação dos métodos de correlação: Método de Person, Spearman e Kendall e conclusões para formação dos testes de hipótese.
+
+6. Formação da hipótese e das variáveis para realizar os testes de hipótese.
+
+7. Teste 1: Controle aleatório: teste de hipótese para verificar a qualidade dos dados e confirmar a hipótese Ho. 
+
+8. Teste 2: Grupo Ciência da computação: teste com amostra dos programas de pós-graduação de ciência da computação, para verificar a hipótese Ha e H1.
+
+9. Teste 3: Grupo Experimento: teste com amostra dos programas com diversidade acima da média, para verificação se esses programas possuem também produtividade acima da média.
+
+10. Teste 4: Grupo Experimento Aprofundado: teste com amostra de programas com diversidade e produtividade acima da média do universo, para confirmar o teste 3.
+
+**ETAPA 3 - ANÁLISE DOS RESULTADOS E CONCLUSÕES**
+
+11. Análise crítica dos resultados.
+
+12. Conclusões gerais sobre o estudo.
+
+## Fonte de Dados
+
+1. Data from Lattes Platform - Extract by Instituto Stela
+2. Data from Sucupira Platform
+
+Abaixo o código para importar os dados que estão em formato CSV. A seguir são descritas as varíaveis criadas para receber os dados
+
+1. A variável **Apps** recebe os dados dos aplicativos a partir do ano 2013 até 2016.
+2. A variável **Professores** recebe os dados dos docentes em todo o período de existência dos cursos
+3. A variável **Graduate_2016** recebe os dados dos programas de pós graduação de todos os programas até o ano de 2016.
+4. A variável **AAtuacao** recebe os dados das áreas de atuação dos professores dos programas,entre os anos de 2013 e 2016.
+
+```{r Import, echo=TRUE, message=FALSE, warning=FALSE}
+#Import Data
+library(readr)
+
+setwd("~/Artigo-da-tese-de-vivian-master2")
+
+Apps <- read_delim("Dados dos aplicativos 2013-2016.csv",";",escape_double = FALSE, trim_ws = TRUE)
+
+Professors <- read_delim("docentes tratada.csv", ";", escape_double = FALSE, trim_ws = TRUE)
+
+Graduate_2016 <- read_delim("Programas PPG 2016.csv",";", escape_double = FALSE, trim_ws = TRUE)
+
+AAtuacao <- read_delim("Areas_de_atuacao_docentes_25_06_2019.csv", ";", escape_double = FALSE, trim_ws = TRUE)
+
+
+
+```
+
+
+
+```{r echo=TRUE}
+library(dplyr)
+library(plotly)
+library(ggplot2)
+library(tidyr)
+library(magrittr)
+library(plotrix)
+library(rgl)
+library(car)
+library(lubridate)
+library(ggplot2)
+library(GGally)
+library(corrplot)
+library(corrgram)
+library(ppcor)
+
+```
+
+## Organização e seleção dos dados
+
+Essas são as variaveis e funções criadas para realizar seleção, organização e aplicação das métricas do estudo, nos dados.
+
+a) Desenvolvidas funções para transformar variaveis em tabelas: função .Unianalysis
+
+As dados foram organizados nas seguintes variáveis abaixo:
+
+1. Variável **Area_Form_Prof_prog**: TabulaÇão de quantidade de area de formaÇão por programa.
+
+2. Variável **Perm_Prof_prog**: TabulaÇão de quatidade de professores por programas. Filtra somente os professores permanentes.
+
+3. Variável **Tidy_frame**: Concatena as variáveis 1 e 2. 
+
+4. Variável **App_prog**: TabulaÇão dos aplicativos por programa.
+
+5. Variável **Tidy_frame2**: Concatena Aplicativos com as variáveis anteriores. Somente os programas que produziram aplicativos permanecem na amostra. 
+
+6. Variável **Metric_frame**: Calcula as métricas da tese da Vivian:
+
+6.1: **Div_Prof_Perm**: Diversidade de formação dos professores permanentes (DFPP);
+  
+6.2: **Prod_App_prof**: Produtividade de aplicativo por professores permanentes (PAPP).
+  
+7. Variável **Metric_frame2**: concatena todas as variáveis anteriores com os metadados dos programas de pós-graduação
+
+7.1 Foi verificado que somente há um nivel nesta variável (Em funcionamento). Há diversas linhas sem dado. Verificar como tratar isso.
+  
+
+```{r Tidyng data, message=FALSE, warning=FALSE, echo=TRUE}
+# Function
+# Transform vector into a data frame with frequency of levels and proportion
+.Unianalysis = function (x) {
+    y <- as.data.frame(as.table(table(x)))
+    y <- mutate(y, proportion = prop.table(y$Freq) *100)#Proportion
+    y <- arrange(y, desc(y$Freq))
+return(y)
+}
+
+#1. Area of Professors per program        
+Area_Form_Prof_prog <-
+         Professors %>% 
+        filter(seq_tipo_categoria_vinculo == 3)%>%
+        group_by(cod_programa) %>%
+        summarise(Area_Formacao_Prof = n_distinct(area_curso_formacao),
+                  Curso_Formacao_Prof = n_distinct(nome_curso_formacao)) %>%
+        arrange(desc(Curso_Formacao_Prof))
+dim(Area_Form_Prof_prog) # Dimensao da tabela
+
+
+#1.1 Area de atuação (incluido em 11-10-19)
+Area_Atua_Prof_prog <-
+        AAtuacao%>% 
+        filter(seq_tipo_categoria_vinculo == 3)%>%
+        group_by(cod_programa) %>%
+        summarise(Q_AAtua = n_distinct(nro_id_cnpq),
+                  grande_area = n_distinct(grande_area),
+                  sub_area = n_distinct(sub_area),
+                  especialidade = n_distinct(especialidade)) %>%
+        mutate(Metric_AA_prof =  Q_AAtua / grande_area) %>%
+        arrange(desc(Metric_AA_prof))
+dim(Area_Atua_Prof_prog)
+        
+#2. Permanents Professors per Program        
+Perm_Prof_prog <-
+        Professors %>%
+        filter(seq_tipo_categoria_vinculo == 3)%>%
+        group_by(cod_programa) %>%
+        summarise(Professores_Perm = n_distinct(nro_id_cnpq)) %>%
+        arrange(desc(Professores_Perm))
+dim(Perm_Prof_prog)
+
+#3. Une codigo de programas com quantidade de professores e quantidade de area de formação
+Tidy_frame <- merge(Perm_Prof_prog, Area_Form_Prof_prog, all = TRUE)
+dim(Tidy_frame)
+
+#4. Apps per program        
+App_prog <-
+        Apps %>%
+        group_by(CD_PROGRAMA_IES)%>%
+        summarise(Apps = n_distinct(ID_ADD_PRODUCAO_INTELECTUAL)) %>%
+        arrange(desc(Apps))
+dim(App_prog)
+
+#5. Concatena Aplicativos com as variaveis anteriores
+Tidy_frame2 <- merge(App_prog, Tidy_frame, by.x="CD_PROGRAMA_IES", by.y="cod_programa", all.x = TRUE)
+dim(Tidy_frame2)
+
+Tidy_frame3 <- merge(Tidy_frame2, Area_Atua_Prof_prog, by.x="CD_PROGRAMA_IES", by.y="cod_programa", all.x = TRUE)
+
+dim(Tidy_frame3)
+
+## 6. Variavel Calcula as m?tricas da tese da Vivian
+  ## Div_Prof_Perm: Diversidade de formacao dos professores permanentes (DFPP)
+  ## Prod_App_prof: Produtividade de aplicativo por professores permanentes (PAPP)
+Metric_frame <-
+            Tidy_frame3%>%
+            group_by(CD_PROGRAMA_IES) %>%
+            mutate(Div_Prof_Perm = 
+                    ((Curso_Formacao_Prof + Metric_AA_prof) / Professores_Perm) * 100,      
+                    Prod_App_prof = 
+                      (Apps / Professores_Perm) * 100)
+ ##Removendo as linhas que tenham NA
+Metric_frame <- na.omit(Metric_frame)
+
+dim(Metric_frame)
+
+## 7. Variavel concatena todas as vari?veis anteriores com os metadados dos programas de p?s-gradua??o
+Metric_frame2 <- merge(Metric_frame, 
+                       Graduate_2016, 
+                       by ="CD_PROGRAMA_IES", all.x = TRUE)
+
+
+dim(Metric_frame2)
+
+```
+
+
+## Caracterização do universo de dados
+
+Na tabela abaixo, armazenada na variável **Contexto** está o total de programs de pós-graduação no Brasil que possuem ao menos 1 aplicativo produzido por docentes permanentes, no período entre 2013 e 2016. 
+
+Todas as linhas com pelo menos uma variável faltante, utilizada para calcular as métricas, foram retiradas, pois valores nulos impossibilitam os testes de correlação. 
+
+Portanto a tabela **Contexto** é o universo de pesquisa. A seguir a descrição de cada coluna da tabela.
+
+> Prog = Quantidade de programas
+
+> Prof_Perm = Quantidade de profesores permanente
+
+> Apps = Quantidade de aplicativos produzidos pelos professores permanentes
+
+> Curso_Form_Prof = Quantidade de cursos de formação dos professores permanentes
+
+> grande_area = Quantidade de grande areas de formação dos professores permanentes
+
+> Q_AAtua = Quantidade de áreas de atuação dos professores permanentes
+
+O universo  total deste estudo é apresentado na variável **Somatorio**, conforme ilustra a tabela abaixo.
+
+
+```{r dimensions}
+## Dimensão da tabela: linhas e colunas
+
+Contexto <-
+            Metric_frame2 %>%
+            group_by(NM_GRANDE_AREA_CONHECIMENTO, CD_PROGRAMA_IES) %>%
+            summarise(Prog = n_distinct(CD_PROGRAMA_IES), 
+                      Prof_Perm = sum(Professores_Perm),
+                      Apps = sum(Apps),
+                      Curso_Formacao_Prof = sum(Curso_Formacao_Prof), 
+                      grande_area = sum(grande_area),
+                      Q_AAtua = sum(Q_AAtua))
+
+Contexto <-
+        Contexto %>% 
+        group_by(NM_GRANDE_AREA_CONHECIMENTO) %>%  
+             summarise(Prog = sum(Prog), 
+                      Prof_Perm = sum(Prof_Perm),
+                      Apps = sum(Apps),
+                      Curso_Form_Prof = sum(Curso_Formacao_Prof), 
+                      grande_area = sum(grande_area),
+                      Q_AAtua = sum(Q_AAtua)) %>% 
+        arrange(desc(Prog)) 
+        
+            
+DT::datatable(Contexto)
+
+
+Somatorio <- apply(Contexto [, 2:7], MARGIN = 2, sum)
+
+DT::datatable(as.data.frame(Somatorio))
+
+
+```
+
+As variáveis descritas na tabela sumarizada acima comporam as métricas das variáveis X e Y, descritas a seguir:
+
+### Variável X
+
+Neste estudo a variável X (independente) **"Div_Prof_Perm"** da tabela **"Metric_Frame2"**, representa o perfil multi e interdisciplinar dos programas de pós-graduação do Brasil, entre os anos 2013-2016,que possuem ao menos 1 aplicativo produzido. Essa variável X é calculada da seguinte forma: 
+
+**X** = $DivProfPerm = (CursoFormacaoProf + MetricAAprof) / ProfessoresPerm) * 100$.
+
+A variável MetricAAprof, que compõe **X**, é calculada da seguinte forma:
+
+$MetricAAprof = QAAtua / grandearea$
+
+
+### Variável Y
+
+A variável Y (dependente) **"ProdAppprof"** da tabela **"MetricFrame2"**, representa a produção de aplicativos por professor permanente, dos programas de pós-graduação do Brasil, entre os anos 2013-2016, que possuem ao menos 1 aplicativo produzido.
+
+
+A variável "Produção de aplicativos dos professores permanentes" (**"ProdAppprof"**) é calculada da seguinte forma: 
+
+**Y** = $ProdAppprof = (Apps / ProfessoresPerm) * 100)$
+
+### Méticas Calculadas
+
+
+Abaixo a escala das duas variáveis, de acordo com o cálculo do universo.
+
+```{r summary }
+
+#Sumário de cada variável (coluna) da tabela
+summary(Metric_frame2$Div_Prof_Perm) # Escala da variavel X
+
+summary(Metric_frame2$Prod_App_prof) # Escala da variavel Y
+
+Metricas <-
+            Metric_frame2 %>%
+            group_by(NM_GRANDE_AREA_CONHECIMENTO) %>%
+            summarise(X = mean(Div_Prof_Perm), 
+                      Y = mean(Prod_App_prof)) %>%
+            arrange(desc(X)) 
+
+DT::datatable(Metricas)
+
+
+library("ggpubr")
+
+X <- as.integer(Metricas$X)
+Y <- as.integer(Metricas$Y)
+
+cor_spearmanGA <- cor(X, Y, method = "spearman")
+cor_spearmanGA
+
+
+```
+
+### Representação gráfica do universo
+
+Os graficos e tabelas a seguir apresentam o contexto dos programas de pós-graduação no Brasil que possuem ao menos 1 aplicativo produzido por docentes, no período entre 2013 e 2016.
+
+1. Variavel **UF_prog**, gr?fico e tabela: Quantidade de programas de pós-graduação no Brasil por Estado, em que há produção de ao menos 1 aplicativo por programa, nos anos entre 2013 e 2016.
+
+2. Variavel **Pub_Priv_prog** e grafico: Quantidade de programas de pós-graduação no Brasil que possuem ao menos 1 aplicativo produzido por docentes, no período entre 2013 e 2016, por instituição p[ublica e privada.
+
+3. Variavel **Conceito_prog** e gráfico: Quantidade de programas de pós-graduação no Brasil que possuem ao menos 1 aplicativo produzido por docentes, no período entre 2013 e 2016, por conceito CAPES.
+
+4. Variavel  **Grande_Area_prog** e tabela: apresenta a distribuição Quantidade de programas de pós-graduação no Brasil que possuem ao menos 1 aplicativo produzido por docentes, no período entre 2013 e 2016, por grande Area da Capes.
+
+5. Variavel  **Word_App** : apresenta os termos mais frequentes na atribuição de finalidade dos aplicativos produzidos pelos docentes de pós-graduação no Brasil, no per?odo entre 2013 e 2016
+
+
+```{r context, echo=TRUE, message=FALSE, warning=FALSE}
+#Funçõespara gráficos
+library(wordcloud)
+
+#Fun Plot
+.Plot_FunPlot = function(x,y) {
+  fan.plot(x$Freq,
+           max.span=pi,
+           labels=paste(x$x, x$Freq, sep=": "),
+            main=y,ticks=360)
+}
+
+histogram=function(x){
+  hist(x,prob=T)
+  lines(density(x),col="red")
+  curve(dnorm(x,mean(x), sd(x)),add=T,col="blue")
+}
+
+.Plot_word = function(x, num1, num2) {
+     wordcloud(words = x$x, freq = x$Freq, min.freq = num1,
+              max.words=num2, random.order=FALSE, rot.per=0.35, 
+              colors=brewer.pal(8, "Dark2")) 
+}
+# Painel contexto - Região, habitantes por região, programas por região, programas por habitantes por regi?o
+
+#1. Graduate per State
+UF_prog <- .Unianalysis(Metric_frame2$SG_UF_PROGRAMA)
+DT::datatable(UF_prog)
+barplot(UF_prog$Freq,
+        names.arg=UF_prog$x,
+        xlab="Estados brasileiros",
+        ylab="Quantidade de programas",
+        ylim = c(0, 180),
+        las = 2,
+        col=rainbow(8),
+        main="1. PPG por Estado",border="red")
+
+#2. Graduate per Public or Private
+Pub_Priv_prog  <-.Unianalysis(Metric_frame2$DS_DEPENDENCIA_ADMINISTRATIVA)
+.Plot_FunPlot(Pub_Priv_prog, "2.PPG por insti. Publica ou Privada")
+DT::datatable(Pub_Priv_prog)
+
+#3. Graduate per Capes Score
+Conceito_prog <- .Unianalysis(Metric_frame2$CD_CONCEITO_PROGRAMA)
+DT::datatable(Conceito_prog)
+barplot(Conceito_prog$Freq,
+        names.arg=Conceito_prog$x, 
+        xlab="Conceito Capes",
+        ylab="Quantidade de programas",
+        legend= paste(as.integer(Conceito_prog$proportion), "%"),
+        ylim = c(0, 400),
+        col=rainbow(8),
+        main="4.PPG por Conceito Capes",border="red")
+
+#4. Graduate per Over field
+Grande_Area_prog <- .Unianalysis(Metric_frame2$NM_GRANDE_AREA_CONHECIMENTO)
+DT::datatable(Grande_Area_prog)
+barplot(Grande_Area_prog$Freq,
+        names.arg=paste(as.integer(Grande_Area_prog$proportion),"%"),
+        legend=Grande_Area_prog$x,
+        xlab="Percentual",
+        ylab="Quantidade de programas",
+        ylim = c(0, 250),
+        las = 1,
+        col=rainbow(8),
+        main="5.PGG por grande área de conhecimento",border="red")
+
+#5. Finalidade dos aplicativos
+Word_apps <- as.data.frame(table(Apps$DS_FINALIDADE))
+ wordcloud(words = Word_apps$Var1, freq = Word_apps$Freq, min.freq = 1,
+              max.words=100, random.order=FALSE, rot.per=0.35, 
+              colors=brewer.pal(8, "Dark2")) 
+ 
+ 
+```
+
+
+# Análise estatística multivariada 
+
+Neste estudo foram utilizadas técnicas de análise estatística multivariada para alcançar o objetivo da pesquisa. As técnicas de análise multivariada de dados estão sendo amplamente utilizadas como substituição dos estudos de caso em profundidade, principalmente a partir do ano de 2009, pois apresentam resultados mais precisos. Essas análises utilizam ferramentas e uma combinação de metodologias, na qual um único estudo articula técnicas quantitativas, e modelos estatísticos (CUANDRA, 2019). 
+
+Os métodos estatísticos multivariados são escolhidos de acordo com os objetivos da pesquisa, pois sabe-se que a análise multivariada é uma análise exploratória de dados, prestando-se a gerar hipóteses, como nos testes de hipótese, nos quais se tem uma afirmação a respeito da amostra em estudo. A estatística multivariada possui diferentes métodos, o que “difere de uma prateleira de supermercado abarrotada de produtos com a mesma função, pois cada método tem sua fundamentação teórica e sua aplicabilidade” (VICINI, 2005).
+
+Importante salientar, que em todo estudo estatístico, quer seja univariado ou multivariado, existe a perda de informação devido a redução de um conjunto de dados para ser representado pela sua média ou por reduzir a dimensionalidade de um problema. O trade-off do pesquisador então reside em obter a informação e saber que tem um erro que foi quantificado (VICINI, 2005).
+
+Neste estudo foram usados métodos de correlações entre as variáveis X e Y para verificar a dependencia entre elas, além de experimentos com testes de hipóteses t. 
+
+## Coeficientes de correlação
+
+Neste estudo utilizamos os coeficientes de correlação de Person, Spearman, e Kendal. Os coeficientes de correlação informam:
+
+**Intensidade**
+Fortemente relacionadas (Valores próximos de 1 ou -1)
+Fracamente relacionadas (Valores próximos de 0)
+
+**Direção**
+Positiva (Se ambas as variáveis crescem no mesmo sentido)
+Negativa (Se as variáveis crescem em sentidos opostos)
+
+**Significância**
+Se é estatisticamente significativa, ou seja, se Um valor de p é menor que 0.05.
+
+A seguir a descrição e aplicação de cada um dos três coeficiente aplicados ao universo desta pesquisa. 
+
+
+### Coeficiente de Correlação de Pearson
+
+Sejam duas variáveis X e Y, ambas quantitativas, preferencialmente contínuas. A existência de relação linear entre essas variáveis pode ser detectada com auxílio do Diagrama de Dispersão, mas, também, com auxílio do Coeficiente de Correlação Linear de Pearson.
+A escala do coeficiente de Pearson é a seguinte:
+
+p = 1 Significa uma correlação perfeita positiva entre as duas variáveis.
+
+p = -1 Significa uma correlação negativa perfeita entre as duas variáveis - Isto é, se uma aumenta, a outra sempre diminui.
+
+p = 0  Significa que as duas variáveis não dependem linearmente uma da outra. 
+
+No entanto, pode existir uma dependência não linear. Assim, o resultado p = 0 deve ser investigado por outros meios. 
+
+Abaixo o teste de Pearson aplicado as variáveis Diversidade (X) e Produção de Apps (Y). 
+
+
+```{r pearson}
+
+library("ggpubr")
+
+M <- Metric_frame2 
+X <- as.integer(M$Div_Prof_Perm)
+Y <- as.integer(M$Prod_App_prof)
+
+cor_pearson <- cor(X, Y, method = "pearson")
+cor_pearson 
+
+```
+
+
+### Coeficiente de Correlação de Spearman (ρ)**
+
+O sinal da correlação de Spearman indica a direção da associação entre X (a variável independente) e Y (a variável dependente). Se Y tende a aumentar quando X aumenta, o coeficiente de correlação de Spearman é positivo. 
+
+Se Y tende a diminuir quando X aumenta, o coeficiente de correlação de Spearman é negativo. Um coeficiente de Spearman igual a zero indica que não há tendência de que Y aumente ou diminua quando X aumenta. 
+
+A correlação de Spearman aumenta em magnitude conforme X e Y ficam mais próximas de serem funções monótonas perfeitas uma da outra. A escala de Spearman igual à correlação de Pearson entre os valores de postos daquelas duas variáveis. Abaixo o teste de Spearman.
+
+Abaixo o teste de Spearman aplicado as variáveis Diversidade (X) e Produção de Apps (Y).
+
+```{r spearman}
+
+cor_spearman <- cor(X, Y, method = "spearman")
+cor_spearman
+
+```
+
+### Coeficiente de Correlação de Kendall (τ de kendall)**
+
+O coeficiente de correlação Tau de Kendall serve para verificar se existe correlação entre duas variáveis ordinais. É um método adequado quando amostras têm tamanhos reduzidos, pois o método é mais preciso. E pode ser estendido a correlações parciais, quando o efeito de uma terceira variável, que age sobre X e Y, é retirado antes de determinar se X e Y estão relacionadas. Coeficiente de Kendall é, muitas vezes, interpretado como uma medida de concordância entre dois conjuntos de classificações relativas a um conjunto de objetos de estudo.
+
+1. O denominador é o número total de combinações de pares, então, o coeficiente deve estar no intervalo  -1 até  1.
+
+2. Se a concordância entre as duas classificações for perfeita (isto é, se as duas classificações forem iguais), o coeficiente tem valor 1.
+
+3. Se a discordância entre as duas classificações for perfeita (isto é, se uma classificação for o reverso da outra), o coeficiente tem valor -1.
+
+Se X e Y forem independentes, espera-se que o coeficiente seja próximo de zero.
+
+Abaixo o teste de kendall aplicado as variáveis Diversidade (X) e Produção de Apps (Y).
+
+```{r kendall}
+
+cor_kendall <- cor(X, Y, method = "kendall")
+cor_kendall
+
+```
+
+### Conclusões das correlações aplicadas ao Universo
+
+Não foram encontradas correlações significativas nos três coeficientes de correlação (Pearson, Kendall, e Spearman) entre a variável x independente e a variável y dependente, o que indica independência dessas variáveis. Contudo, quando os níveis de variáveis são visualizados, nos gráficos a seguir, verifica-se que há grupos de programas com diferentes origens (universidade pública e privada) e diferentes conceitos CAPES que mostram-se com características diferenciadas do comportamento do universo. Assim, foram estabelecidos esperimentos para observar como essas variáveis se comportam em amostras selecionadas de acordo com agrupamentos induzidos.
+
+```{r}
+library("ggpubr")
+
+ggplot(data = Metric_frame2, aes(x = Prod_App_prof , y= Div_Prof_Perm, colour = as.factor(DS_DEPENDENCIA_ADMINISTRATIVA))) + geom_point() + labs(x = "Produção de Apps", y = "Perfil Multi / Inter") + geom_smooth(method = "lm") + theme(legend.position = "bottom") + ggtitle("a) Correlação X & Y - Universo (Dep. Adm.)")
+
+ggplot(data = Metric_frame2, aes(x = Prod_App_prof, y = Div_Prof_Perm,colour = as.factor(CD_CONCEITO_PROGRAMA))) + geom_point() + labs(x = "Produção de Apps", y = "Perfil Multi / Inter")  + geom_smooth(method = "lm") + theme(legend.position = "bottom") + ggtitle("b) Correlação X & Y - Universo (nota conceito Capes)")
+```
+
+A seguir os testes de hipótese t Student
+
+## Testes de hipótese t Student
+
+O teste t de Student (ou simplesmente teste t) compara duas médias e mostra se as diferenças entre essas médias são significativas. Em outras palavras, permite que se avalie se essas diferenças ocorreram por um mero acaso ou não.
+
+A necessidade de determinar se duas médias de amostras são diferentes entre si é uma situação extremamente frequente em pesquisas científicas. Por exemplo se um grupo experimental difere de um grupo controle, se uma amostra difere da população, se um grupo difere antes de depois de um procedimento. Nessas diversas situações, um método bastante comum é a comparação das médias da medida de interesse. O test t serve justamente para isso, para estimar se a diferença das médias de dois conjuntos de dados é ou não estatisticamente significativa.
+
+Como todo teste estatístico, a teste t também tem como produto a medida do valor de p. Ou seja, no final das contas, teremos calculado a probabilidade da diferença encontrada (entre as médias) terem sido por acaso. Se esse valor for menor que 5% ( p < 0.05), a tradição científica é de rejeitarmos a hipótese de que as diferenças sejam por acaso (rejeitamos a hipótese nula) e alegamos termos encontrado uma diferença estatísticamente significativa.
+
+**O teste apresenta os seguintes resultados:**
+
+1. Nome do teste que foi feito: Welch Two Sample t-test (teste-t de Welch de duas amostras).
+O teste-t de Welch é uma adaptação do teste t de Student, que é mais confiável quando as duas amostras têm variâncias desiguais e tamanhos de amostra desiguais. O teste-t padrão do R utiliza essa variação do teste-t.
+
+2. Fonte de dados
+
+3. o valor da estatística t, os graus de liberdade da curva de distribuição t (df) e o valor de p (p-value) 
+
+4. a hipótese alternativa do teste. A hipótese alternativa é que as médias da amostras são diferentes.
+
+5. intervalo de confiança do teste.
+
+6. Estimativa da média de x.
+
+Considera-se neste estudo a variável **Perfil Multi e Interdisciplinar de programas de pós-graduação** como a variável X independente; e a variável **Produção de aplicativos por programa** como a variável Y dependente.
+
+As hipóteses do estudo são descritas a seguir:
+
+Ho: p  = mu
+
+Ha: p != mu
+
+Onde mu é a média do universo.
+
+Em termos conceituais a hipótese H1 é a seguinte afirmação: **Um perfil multi e interdisciplinar acima da média, de programas de pós-graduação implica em uma produção de aplicativos acima da média.** Neste estudo, uma equipe é um programa de pós-graduação do Brasil, que produziu ao menos um aplicativo entre os anos 2013 e 2016. Essa hipótese está representada na sentença abaixo:
+
+H1: X > X¹ => Y > Y¹
+
+Onde:
+
+> X é a média do índice de perfil Multi e Interdisciplinar de programas de pós-graduação da amostra do experimento (n=indivíduos de X).
+
+> X¹ é a variável mu, a média do índice de perfil Multi e Interdisciplinar dos programas de pós-graduação brasileiros, entre os anos 2013-2016,que possuem ao menos 1 aplicativo produzido, ou seja, a média do universo (n=872).
+
+> Y é a média de produção de aplicativos por programas de pós-graduação da amostra (n=indivíduos de Y).
+
+> Y¹ é a variável mu, produção de aplicativos por programas de pós-graduação de todos os programas brasileiros, entre os anos 2013-2016, que possuem ao menos 1 aplicativo produzido, ou seja, a média do universo (n=872).
+
+Além disso, mu=Media é a média universo.
+
+Para verificar se a hipótese H1 é verdadeira, as hipóteses e testes descritos a seguir foram realizados.
+
+### Método e materiais dos experimentos com teste de hipótese t
+
+Foram desenvolvidas oito (08) variáveis para a realização dos três testes de hipóteses, além da utilização das outras variáveis já existentes que representam a diversidade de formação dos professores e a produtividade de aplicativos por professores de pós-graduação.
+
+As amostras foram divididas em quatro grupos:
+
+- O primeiro experimento é uma amostra aleatória do universo, (variáveis app_controle_aleatorio e div_controle_aleatorio), com o tamamho da amostra do terceiro experimento, onde n=414. A média de diversidade e produção de aplicativo dessa amostra deverá ser significativamente similar a média de todo o universo. 
+
+- O segundo experimento é uma amostra dos programas de pós-graduação de ciência da computação, onde n=54. Espera-se que este grupo tenha alta produção de aplicativos (Y > Y¹). Para que a hipótese H1 seja verdadeira, esse experimento deverá também possuir perfil multi e interdisciplinar acima da média do universo (X > X¹).
+
+- O terceiro experimento é o agrupamento dos programas que possuem perfil multi e interdisciplinar acima da média (X > X¹), onde n=414. Para que a hipótese H1 seja verdadeira, esse experimento deverá também possuir produção de aplicativos acima da média do universo (Y > Y¹).
+
+- O quarto experimento é o agrupamento dos programas com as variáveis X (perfil multi e interdisciplinar) e Y (produção de aplicativos) acima da média (X > X¹ & Y > Y¹),onde n=134.
+
+
+```{r groups}
+## Variaveis
+M <- Metric_frame2 
+# mu da amostra de produção de aplicativo
+Media_prod_app <- mean(M$Prod_App_prof, na.rm = TRUE)
+## mu de diversidade do universo: mu
+Media_diversidade <- mean(M$Div_Prof_Perm, na.rm = TRUE)
+## Amostra de dados de produção de aplicativo com o grupo de programas de pós-graduação de ciencia da computacao
+
+
+MCC <-
+  M %>%
+  filter(NM_AREA_CONHECIMENTO == "CIÊNCIA DA COMPUTAÇÃO") #ciencia da computacao
+
+app_controle_CC <- na.omit(MCC$Prod_App_prof)
+div_controle_CC <- na.omit(MCC$Div_Prof_Perm )
+
+# Amostra de dados de produção de aplicativo com o grupo de programas de pós-graduação que possuem diversidade acima na média
+fexperimental <- 
+  M %>%
+  filter(Div_Prof_Perm > Media_diversidade)
+
+app_experimental <- na.omit(fexperimental$Prod_App_prof)
+div_experimental <- na.omit(fexperimental$Div_Prof_Perm)
+
+#Amostra de dados de produção de aplicativo aleatória pareada com a amostra experimental
+app_controle_aleatorio <- na.omit(M$Prod_App_prof[1:length(app_experimental)])
+div_controle_aleatorio <- na.omit(M$Div_Prof_Perm[1:length(div_experimental)])
+
+# Amostra com programas da Grande área multidisciplinar
+f2experimental <- 
+  M %>%
+  filter(Prod_App_prof > Media_prod_app, Div_Prof_Perm >  Media_diversidade)
+
+app_experimental2 <- na.omit(f2experimental$Prod_App_prof)
+div_experimental2 <- na.omit(f2experimental$Div_Prof_Perm)
+
+
+```
+
+### Experimento 1: Controle aleatório (n=414)
+
+Teste para verificar se uma amostra aleatória possui as médias iguais às médias do universo.
+Espera-se que a hipótese Ho seja confirmada nos dois testes das duas variáveis X e Y, pois trata-se de uma amostra aleatória, cujo n=414.
+
+
+```{r exp1}
+# Teste 2 - Dados de produção de app de um grupo aleatório de diversidade de formação de professores
+
+length(app_controle_aleatorio)
+length(div_controle_aleatorio)
+
+t.test(app_controle_aleatorio,  mu = Media_prod_app)
+
+t.test(div_controle_aleatorio,  mu = Media_diversidade)
+
+boxplot(div_controle_aleatorio, M$Div_Prof_Perm, app_controle_aleatorio,  M$Prod_App_prof, 
+        outline = FALSE,
+        names = c("X", "X¹", "Y", "Y¹"),  
+        col = c("blue", "yellow", "blue", "yellow"), 
+        main = "Experimento 1: Aleatório (n=414)")
+
+
+par(mfrow=c(1,2))
+
+ggplot(data = M[1:414, 1:35], aes(x = Prod_App_prof, y = Div_Prof_Perm,colour = as.factor(DS_DEPENDENCIA_ADMINISTRATIVA))) + geom_point() + labs(x = "Produção de Apps", y = "Perfil Multi / Inter")  + geom_smooth(method = "lm") + theme(legend.position = "bottom") + ggtitle("a) Correlação X & Y - Exp. 1 (Dep. Adm.)")
+
+ggplot(data = M[1:414, 1:35], aes(x = Prod_App_prof, y = Div_Prof_Perm,colour = as.factor(CD_CONCEITO_PROGRAMA))) + geom_point() + labs(x = "Produção Apps", y = "Perfil Multi / Inter") + geom_smooth(method = "lm") + theme(legend.position = "bottom") + ggtitle("b) Correlação X & Y - Exp. 1 (nota conceito Capes)")
+
+```
+
+#### Conclusão do experimento 1 - Aléatório
+
+O objetivo deste experimento era verificar se n seria suficiente para obter uma amostra válida para o experimento 3. Como a hipótese Ho foi confirmada, esse objetivo foi alcançado. 
+
+
+### Experimento 2: Grupo Ciência da computação (n=54)
+
+Teste para verificar se os programas de pós-graduação de ciência da computação realmente possuem produção de aplicativos superior que a média do universo, ou seja, teste para refutar a hipótese Ho e confirmar a hipótese Ha alternativa. O teste ainda pode servir para avaliar a Hipótese H1. Neste experimento n=54. Assim, para confirmar a Hipótese H1, espera-se que haja um índice alto de perfil Multi e Inter (X > X¹) e uma produção de aplicativos alta (Y > Y¹). 
+Contudo, sabe-se empiricamente que este grupo possui características disciplinares, fator que pode invalidar a hipótese H1.
+
+```{r control2}
+
+# Teste 2 - Grupo Dados de produção de ap do grupo de professores de programas de pós-graduação em Ciência da Computação
+
+length(app_controle_CC)
+length(div_controle_CC)
+
+t.test(app_controle_CC, mu = Media_prod_app)
+
+t.test(div_controle_CC, mu = Media_diversidade)
+
+boxplot(div_controle_CC, M$Div_Prof_Perm, app_controle_CC,  M$Prod_App_prof, 
+        outline = FALSE,
+        names = c("X", "X¹", "Y", "Y¹"),   
+        col = c("green", "yellow", "green", "yellow"), 
+        main = "Experimento 2: Ciência da Computação(n=54)")
+
+cor_pearsonC1 <- cor(as.integer(na.omit(MCC$Div_Prof_Perm)), 
+                     as.integer(na.omit(MCC$Prod_App_prof)), method = "pearson")
+cor_pearsonC1
+
+ggplot(data = MCC, aes(x = Prod_App_prof, y = Div_Prof_Perm,colour = as.factor(DS_DEPENDENCIA_ADMINISTRATIVA))) + geom_point() + labs(x = "Produção de Apps", y = "Perfil Multi / Inter")  + geom_smooth(method = "lm") + theme(legend.position = "bottom") + ggtitle("a) Correlação X & Y - Exp. 2 (Dep. Adm.)")
+
+ggplot(data = MCC, aes(x = Prod_App_prof, y = Div_Prof_Perm,colour = as.factor(CD_CONCEITO_PROGRAMA))) + geom_point() + labs(x = "Produção Apps", y = "Perfil Multi / Inter") + geom_smooth(method = "lm") + theme(legend.position = "bottom") + ggtitle("b) Correlação X & Y - Exp. 2 (nota conceito Capes)")
+
+
+
+```
+
+#### Conclusão teste 2: Ciência da Computação
+
+A hipótese Ho foi rejeitada. Contudo a hipótese H1 foi também foi rejeitada, devido a falsidade da implicação da sentença. Isso significa que não foram encontrados resultados significativos estatisticamente, de que perfil de equipes multi/inter disciplinares (X) implicam em um aumento da produção de aplicativos por programas de pós-graduação (Y). Esse resultado é o contrário do que esperávamos descobrir quanto a hipótese, mas era o resultado esperado para esta amostra.
+
+Ao aplicarmos o teste de correlação de Pearson verificamos que as duas variáveis são independentes na amostra geral.
+
+Contudo, quando separamos esta amostra por outras variáveis, como dependencia financeira e conceito capes, descobrimos que há grupos onde exite uma correlaçao entre X e Y, e que essas relações podem ser positivas, no caso de universidades públicas e nos conceitos 4 e 7, ou negativas, no caso de universidades privadas.
+
+Obviamente, que colocando esses grupos distintos na mesma amostra, essas forças contrárias anulam-se, e o resultado aparece como não correlacionado.
+
+### Experimento 3: Grupo Variável X > X¹ (n=414)
+
+Esse teste foi criado para verificar se os programas de pós-graduação com perfil multi/inter disciplinar (X) realmente possuem produção de aplicativos (Y) superior que a média do universo, ou seja, teste para verificar a hipótese H1. Para isso, foram agrupados os programas com perfil multi/inter disciplinar (X) acima da média do universo, sendo n=414. Foram então aplicados os testes de hipótese.
+
+```{r exp3}
+# Teste 3 - Dados de produção de app do grupo com diversidade de formação de professores acima da média, comparando a média de diversidade do universo 
+length(app_experimental)
+length(div_experimental)
+
+t.test(app_experimental, mu = Media_prod_app)
+
+t.test(div_experimental, mu = Media_diversidade)
+
+boxplot(div_experimental, M$Div_Prof_Perm, app_experimental,  M$Prod_App_prof, 
+        outline = FALSE,
+        names = c("X", "X¹", "Y", "Y¹"),  
+        col = c("red", "orange", "red", "orange"), 
+        main = "Experimento 3:X>X¹(n=414)")
+
+ggplot(data = fexperimental, aes(x = Prod_App_prof, y = Div_Prof_Perm,colour = as.factor(DS_DEPENDENCIA_ADMINISTRATIVA))) + geom_point() + labs(x = "Produção de Apps", y = "Perfil Multi / Inter")  + geom_smooth(method = "lm")  + theme(legend.position = "bottom") + ggtitle("a) Correlação X & Y - Exp. 3 (Dep. Adm.)")
+
+ggplot(data = fexperimental, aes(x = Prod_App_prof, y = Div_Prof_Perm,colour = as.factor(CD_CONCEITO_PROGRAMA))) + geom_point() + labs(x = "Produção Apps", y = "Perfil Multi / Inter") + geom_smooth(method = "lm")  + theme(legend.position = "bottom") + ggtitle("b) Correlação X & Y - Exp. 3 (nota conceito Capes)")
+```
+
+#### Conclusão teste 3: Grupo Variável X > X¹
+
+A hipótese H1 não pode ser confirmada. Os testes de correlação entre X e Y mostram que as variáveis são independentes. 
+
+Contudo, quando separamos outras variáveis, como dependencia financeira e conceito capes, verifica-se que essas relações pode ser positivas, no caso de programas de universidades públicas e com conceito 4 e 5, ou negativas, no caso de programas de universidades privadas e com conceito capes 6. 
+
+Assim, essas forças contrárias de correlações criam a ilusão de não correlação de X e Y nessa amostra. O resultado é corroborado pelo experimento 2.
+
+### Experimento 4: Grupo Variável X > X¹ & Variável Y > Y¹(n=134)
+
+Esse teste foi criado para verificar a correlação entre com perfil multi/inter disciplinar (X) e produção de aplicativos (Y), nos programas em que essas duas variáveis X e Y estão acima da média do universo, sendo n=134. 
+
+Assim, foram agrupados os programas com perfil multi e inter disciplinar e produção de aplicativos acima da média do universo. Foram então aplicados os testes de hipótese. Após a aplicação dos testes foi realizada uma análise dos diversos níveis das variáveis.
+
+
+```{r Exp2}
+# Teste 4 - Dados de produção de app do grupo com diversidade de formação de professores e produção de aplicativos acima da média, comparando a média de diversidade do universo 
+
+length(app_experimental2)
+length(div_experimental2)
+
+t.test(app_experimental2, mu = Media_prod_app)
+
+t.test(div_experimental2, mu = Media_diversidade)
+
+boxplot(div_experimental2, M$Div_Prof_Perm, app_experimental2,  M$Prod_App_prof, 
+        outline = FALSE,
+        names = c("X", "X¹", "Y", "Y¹"),  
+        col = c("blue", "red", "blue", "red"), 
+        main = "Experimento 4:X>X¹ & Y>Y¹(n=134)")
+
+ggplot(data = f2experimental, aes(x = Prod_App_prof, y = Div_Prof_Perm,colour = as.factor(DS_DEPENDENCIA_ADMINISTRATIVA))) + geom_point() + labs(x = "Produção de Apps", y = "Perfil Multi / Inter")  + geom_smooth(method = "lm")  + theme(legend.position = "bottom") + ggtitle("a) Correlação X & Y - Exp. 4 (Dep. Adm.)")
+
+ggplot(data = f2experimental, aes(x = Prod_App_prof, y = Div_Prof_Perm,colour = as.factor(CD_CONCEITO_PROGRAMA))) + geom_point() + labs(x = "Produção Apps", y = "Perfil Multi / Inter") + geom_smooth(method = "lm")  + theme(legend.position = "bottom") + ggtitle("b) Correlação X & Y - Exp. 4 (nota conceito Capes)")
+
+```
+
+#### Conclusão teste 4: Grupo Variável X > X¹ & Variável Y > Y¹
+
+A hipótese Ho foi rejeitada. Entretanto, a hipótese H1 não pode ser confirmada devido a não correlação entre as variáveis. 
+
+Contudo, conforme aponta os dados nos testes de correlação, exite correlação positiva entre X e Y nos programas das universidades públicas e com conceito capes 4, o que confirma a hipótese H1, e correlação negativa nos programas das universidades privadas e com conceito capes 3,5 e 6, o que refuta a hipótese H1.
+
+Assim, recomenda-se para trabalhos futuros verificar as características desses programas de pós-graduação.
+
+# Resultados e Conclusões
+
+Os resultados quando observados do ponto de vista do universo e amostras não apresentam correlações significativas. Contudo quando são observados os grupos de programas semelhantes entre si por serem de universidades públicas ou privadas, ou por possuirem o mesmo conceito de avaliação da CAPES, mostram-se com comportamento significativamente diferente do conjunto total, sendo esse conjunto uma amostra ou o universo.
+A seguir algumas considerações.
+
+
+## Quanto as correlações das variáveis X e Y do Universo
+
+Não foram encontradas correlações significativas nos três coeficientes de correlação (Pearson, Kendall, e Spearman) entre a variável X independente e a variável Y dependente, o que indica independência dessas variáveis, no Universo onde n=872. 
+
+
+```{r cor graphics, echo=FALSE, include=TRUE}
+
+
+panel.hist <- function(x, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(usr[1:2], 0, 1.5) )
+  h <- hist(x, plot = FALSE)
+  breaks <- h$breaks; nB <- length(breaks)
+  y <- h$counts; y <- y/max(y)
+  rect(breaks[-nB], 0, breaks[-1], y, col = "cyan", ...)
+}
+
+# 1.2 by Melina de Souza Leite 
+panel.lm <- function (x, y, col = par("col"), bg = NA, pch = par("pch"), 
+                      cex = 1, col.line="red") {
+  points(x, y, pch = pch, col = col, bg = bg, cex = cex)
+  ok <- is.finite(x) & is.finite(y)
+  if (any(ok)) {
+    abline(lm(y[ok]~x[ok]), col = col.line)
+  }
+}
+
+# 1.3 help(pairs) by Melina de Souza Leite 
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- abs(cor(x, y))
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste0(prefix, txt)
+  if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+
+
+Perfil_Multi_Inter <- Metric_frame2$Div_Prof_Perm
+Produtividade_Apps <-Metric_frame2$Prod_App_prof
+
+MP <- cbind(Perfil_Multi_Inter, Produtividade_Apps)
+
+pairs(MP,  
+      diag.panel = panel.hist,
+      upper.panel = panel.cor,
+      lower.panel = panel.lm,
+      main="Correlação entre Perfis Multi/Inter & Produção de apps")
+
+```
+
+Contudo, quando os níveis de variáveis são visualizados nos experimentos envolvendo amostras selecionadas, verifica-se que há grupos de programas com diferentes origens (universidade pública e privada) e diferentes conceitos CAPES que mostram-se com características diferenciadas do comportamento do universo. 
+
+Assim, a correlação entre X e Y, nos experimentos mostrou-se tanto positiva, em certos grupos, como negativa em outros grupos. 
+
+## Quanto aos experimentos
+
+Abaixo os principais resultados do experimentos para este estudo. Algumas informações foram propositalmente ignoradas, devido ao objetivo do estudo.
+
+
+```{r message=FALSE, warning=FALSE}
+
+Resultados <- read_delim("result_Exp.csv", 
+    ";", escape_double = FALSE, trim_ws = FALSE)
+
+DT::datatable(Resultados)
+
+```
+* **< 2.2e-16 = 0,000 000 000 000 000 22**
+
+Apesar dos teste de hipótese não corroborarem a hipótese H1, quando são observados grupos de programas por conceito capes e dependencia financeira essas correlações tornam-se significativas, tanto positiva quanto negativamente.
+
+Portanto, os experimentos realizados provaram que há sim correlação positiva entre perfis multi e interdisciplinares e produção de aplicativos nos programas com conceito da CAPES 4 e 5, nas universidades públicas.
+
+```{r}
+
+par(mfrow=c(2,2))
+
+boxplot(div_controle_aleatorio, M$Div_Prof_Perm, app_controle_aleatorio,  M$Prod_App_prof, 
+        outline = FALSE,
+        names = c("X", "X¹", "Y", "Y¹"),  
+        col = c("blue", "yellow", "blue", "yellow"), 
+        main = "E1:Aleatório.n=414")
+
+boxplot(div_controle_CC, M$Div_Prof_Perm, app_controle_CC,  M$Prod_App_prof, 
+        outline = FALSE,
+        names = c("X", "X¹", "Y", "Y¹"),  
+        col = c("green", "yellow", "green", "yellow"), 
+        main = "E2:Ciência da Computação.n=54")
+
+boxplot(div_experimental, M$Div_Prof_Perm, app_experimental,  M$Prod_App_prof, 
+        outline = FALSE,
+        names = c("X", "X¹", "Y", "Y¹"), 
+        col = c("red", "orange", "red", "orange"), 
+        main = "E3:X > X¹.n=414")
+boxplot(div_experimental2, M$Div_Prof_Perm, app_experimental2,  M$Prod_App_prof, 
+        outline = FALSE,
+        names = c("X", "X¹", "Y", "Y¹"),  
+        col = c("blue", "red", "blue", "red"), 
+        main = "E4:X>X¹,Y>Y¹.n=134")
+
+```
+
+Portanto, para trabalhos futuros sugere-se experimentos com clusterização dos dados, além de análises qualitativas dos grupos onde as correlações positivas e negativas aparecem.
+
+# Agradecimentos
+
+Ao Instituto Stela, à UFSC, à CAPES e ao CNPq.
+
+# Referências
+
+Exemplos de teste de hipótese no R Studio: http://rstudio-pubs-static.s3.amazonaws.com/408638_6679293d4c7a415eaebe00faa3aea0cb.html
+
+Exemplos de gráficos no R Studio
+http://rstudio-pubs-static.s3.amazonaws.com/333174_2dd6bca1e4cc43159f088229bb76633e.html
+
+Correlações em R- Fellipe Gomes - 22 de novembro de 2017
+https://rpubs.com/gomes555/correlacao
+
+https://pt.wikipedia.org/wiki/Coeficiente_de_correla%C3%A7%C3%A3o_de_postos_de_Spearman#targetText=Em%20estat%C3%ADstica%2C%20o%20coeficiente%20de,a%20classifica%C3%A7%C3%A3o%20de%20duas%20vari%C3%A1veis).
+
+What to do about p-values http://www.datadreaming.org/post/what-to-do-about-p-values/
+
+CUANDRAS, C. M. NUEVOS MÉTODOS DE AN£LISIS MULTIVARIANTE. Propriedadade c.M. Cuadras
+CMC Editions. Agramunt, 16, 08023 Barcelona, Spain: Revisado 21 de Junio de 2019. Disponível em http://www.ub.edu/stat/personal/cuadras/metodos.pdf
+
+
+VICINI, L. Análise multivariada da teoria à prática / Lorena Vicini; orientador Adriano Mendonça Souza. - Santa Maria : UFSM, CCNE, 2005. 215 p. : il. 
